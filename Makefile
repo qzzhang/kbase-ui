@@ -45,7 +45,8 @@ default:
 run: init build start pause preview
 
 NODE=$(shell node --version 2> /dev/null)
-NODE_REQUIRED="v6"
+#NODE_REQUIRED="v6"
+NODE_REQUIRED="v8"
 majorver=$(word 1, $(subst ., ,$1))
 
 preconditions:
