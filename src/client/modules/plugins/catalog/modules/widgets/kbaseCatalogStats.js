@@ -98,7 +98,7 @@ define([
                     }
                 });
 
-                if (self.isAdmin) {
+                //**qz**if (self.isAdmin) {
 
                     var $adminUserStatsTable = $('<table>').addClass('table').css('width', '100%');
                     var $adminRecentRunsTable = $('<table>').addClass('table').css('width', '100%');
@@ -188,7 +188,7 @@ define([
 
                     self.$basicStatsDiv.append($adminContainer);
 
-                }
+                //**qz**}
 
 
                 var $table = $('<table>').addClass('table').css('width', '100%');
@@ -223,6 +223,33 @@ define([
                     "data": self.allStats
                 };
                 $table.DataTable(tblSettings);
+                /*
+                //**qz**
+                var tabl = $table.DataTable();
+                tabl.columnFilter({
+                    sPlaceHolder: "head:before",
+                    aoColumns: [
+                          { type: "input" },  
+                          { type: "input" },  
+                          { type: "input" },        
+                          { type: "input" },  
+                          { type: "input" },        
+                          { type: "input" },  
+                          { type: "input" },  
+                          { type: "input" }
+                  ]
+                });
+                tabl.columns().every( function () {
+                    var that = this;
+                    $( 'input', this.footer() ).on( 'keyup change', function () {
+                      if ( that.search() !== this.value ) {
+                        that
+                            .search( this.value )
+                            .draw();
+                      }
+                    } );
+                } )//**qz**
+*/
                 $table.find('th').css('cursor', 'pointer');
 
                 self.$basicStatsDiv.append($container);
@@ -479,8 +506,8 @@ define([
 
             checkIsAdmin: function () {
                 var self = this;
-                self.isAdmin = false;
-
+                self.isAdmin = true;//false;
+                
                 var me = self.runtime.service('session').getUsername();
                 return self.catalog.is_admin(me)
                     .then(function (result) {
@@ -491,7 +518,6 @@ define([
                         return Promise.try(function () {});
                     });
             }
-
 
         });
     });
