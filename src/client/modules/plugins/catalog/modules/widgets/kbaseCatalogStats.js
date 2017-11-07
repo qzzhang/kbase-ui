@@ -103,12 +103,21 @@ define([
                     var $adminUserStatsTable = $('<table>').addClass('table').css('width', '100%');
                     var $adminRecentRunsTable = $('<table>').addClass('table').css('width', '100%');
 
+                    var $adminCurrentRunsTable = $('<table>').addClass('table').css('width', '100%');
+                    var $adminQueuedRunsTable = $('<table>').addClass('table').css('width', '100%');
+
 
                     var $adminContainer = $('<div>').addClass('container-fluid')
                         .append($('<div>').addClass('row')
                             .append($('<div>').addClass('col-md-12')
                                 .append('<h4>(Admin View) Recent Runs (completed in last 48h):</h4>')
                                 .append($adminRecentRunsTable)
+                                .append('<br><br>')
+                                .append('<h4>(Admin View) Current Runing jobs:</h4>')
+                                .append($adminCurrentRunsTable)
+                                .append('<br><br>')
+                                .append('<h4>(Admin View) Queued jobs:</h4>')
+                                .append($adminQueuedRunsTable)
                                 .append('<br><br>')
                                 .append('<h4>(Admin View) User Run Summary:</h4>')
                                 .append($adminUserStatsTable)
@@ -149,8 +158,77 @@ define([
                             })
                         }
                     };
+                    var adminCurrentRunsTblSettings = {
+                        "bFilter": true,
+                        "sPaginationType": "full_numbers",
+                        "iDisplayLength": 50,
+                        "sDom": 'ft<ip>',
+                        "aaSorting": [
+                            [3, "dsc"]
+                        ],
+                        "columns": [
+                            { sTitle: 'User', data: "user_id" },
+                            { sTitle: "App Id", data: "app_id" },
+                            { sTitle: "Job Id", data: "job_id" },
+                            { sTitle: "Module", data: "app_module_name" },
+                            { sTitle: "Submission Time", data: "creation_time" },
+                            { sTitle: "Start Time", data: "exec_start_time" },
+                            { sTitle: "Running Time", data: "running_time" },
+                            { sTitle: "Result", data: "result", className: "job-log" },
+                        ],
+                        "columnDefs": [
+                            { "type": "hidden-number-stats", targets: [7] }
+                        ],
+                        "data": self.adminCurrentRuns,
+                        fnRowCallback: function (nRow, aData, iDisplayIndex, iDisplayIndexFull) {
+                            $('td:eq(8)', nRow).find('.btn').on('click', function (e) {
+                                var row = renderedTable.row(nRow);
+                                if (row.child.isShown()) {
+                                    row.child.hide();
+                                } else {
+                                    row.child(self.renderJobLog(aData.job_id)).show();
+                                }
+                            })
+                        }
+                    };
+                    var adminQueuedRunsTblSettings = {
+                        "bFilter": true,
+                        "sPaginationType": "full_numbers",
+                        "iDisplayLength": 50,
+                        "sDom": 'ft<ip>',
+                        "aaSorting": [
+                            [3, "dsc"]
+                        ],
+                        "columns": [
+                            { sTitle: 'User', data: "user_id" },
+                            { sTitle: "App Id", data: "app_id" },
+                            { sTitle: "Job Id", data: "job_id" },
+                            { sTitle: "Module", data: "app_module_name" },
+                            { sTitle: "Submission Time", data: "creation_time" },
+                            { sTitle: "Queued Time", data: "queued_time" },
+                            { sTitle: "Client Group(s)", data: "client_groups" },
+                        ],
+                        "columnDefs": [
+                            { "type": "hidden-number-stats", targets: [7] }
+                        ],
+                        "data": self.adminQueuedRuns,
+                        fnRowCallback: function (nRow, aData, iDisplayIndex, iDisplayIndexFull) {
+                            $('td:eq(8)', nRow).find('.btn').on('click', function (e) {
+                                var row = renderedTable.row(nRow);
+                                if (row.child.isShown()) {
+                                    row.child.hide();
+                                } else {
+                                    row.child(self.renderJobLog(aData.job_id)).show();
+                                }
+                            })
+                        }
+                    };
                     var renderedTable = $adminRecentRunsTable.DataTable(adminRecentRunsTblSettings);
                     $adminRecentRunsTable.find('th').css('cursor', 'pointer');
+                    var renderedTable = $adminCurrentRunsTable.DataTable(adminCurrentRunsTblSettings);
+                    $adminCurrentRunsTable.find('th').css('cursor', 'pointer');
+                    var renderedTable = $adminQueuedRunsTable.DataTable(adminQueuedRunsTblSettings);
+                    $adminQueuedRunsTable.find('th').css('cursor', 'pointer');
 
                     //
                     // $adminRecentRunsTable.find('tbody').on('click', 'td.job-log', function() {
@@ -223,33 +301,6 @@ define([
                     "data": self.allStats
                 };
                 $table.DataTable(tblSettings);
-                /*
-                //**qz**
-                var tabl = $table.DataTable();
-                tabl.columnFilter({
-                    sPlaceHolder: "head:before",
-                    aoColumns: [
-                          { type: "input" },  
-                          { type: "input" },  
-                          { type: "input" },        
-                          { type: "input" },  
-                          { type: "input" },        
-                          { type: "input" },  
-                          { type: "input" },  
-                          { type: "input" }
-                  ]
-                });
-                tabl.columns().every( function () {
-                    var that = this;
-                    $( 'input', this.footer() ).on( 'keyup change', function () {
-                      if ( that.search() !== this.value ) {
-                        that
-                            .search( this.value )
-                            .draw();
-                      }
-                    } );
-                } )//**qz**
-*/
                 $table.find('th').css('cursor', 'pointer');
 
                 self.$basicStatsDiv.append($container);
@@ -385,7 +436,13 @@ define([
                         if (self.isAdmin) {
                             return self.getAdminUserStats()
                                 .then(function () {
-                                    return self.getAdminLatestRuns();
+                                    return self.getAdminLatestRuns()
+                                        .then(function () {
+                                            return self.getAdminCurrentRuns()
+                                                .then(function () {
+                                                    return self.getAdminQueuedRuns();
+                                                })
+                                        })
                                 })
                         } else {
                             return Promise.try(function () {});
@@ -400,10 +457,11 @@ define([
 
             getAdminUserStats: function () {
                 var self = this;
+                
                 if (!self.isAdmin) {
                     return Promise.try(function () {});
                 }
-
+                
                 return self.catalog.get_exec_aggr_table({})
                     .then(function (adminStats) {
 
@@ -445,12 +503,138 @@ define([
                     });
             },
 
-            getAdminLatestRuns: function () {
+
+            getAdminQueuedRuns: function () {
                 var self = this;
+                
                 if (!self.isAdmin) {
                     return Promise.try(function () {});
                 }
+                
+                var seconds = (new Date().getTime() / 1000) - 172800;
 
+                return self.catalog.get_exec_raw_stats({ begin: seconds })
+                    .then(function (data) {
+                        self.adminQueuedRuns = [];
+                        awe_groups = self.catalog.get_client_groups({})[0]
+                        for (var k = 0; k < data.length; k++) {
+                            data[k]['creation_time'] = new Date(data[k]['creation_time'] * 1000).toLocaleString();
+                            var rt = new Date().getTime() - data[k]['creation_time'];
+                            data[k]['user_id'] = '<a href="#people/' + data[k]['user_id'] + '">' + data[k]['user_id'] + '</a>'
+                            data[k]['queued_time'] = '<!--' + rt + '-->' + self.getNiceDuration(rt);
+
+                            if (data[k]['is_error']) {
+                                data[k]['result'] = '<span class="label label-danger">Error</span>';
+                            } else {
+                                data[k]['result'] = '<span class="label label-success">Success</span>';
+                            }
+                            data[k]['result'] += '<span class="btn btn-default btn-xs"><i class="fa fa-file-text"></i></span>';
+
+                            if (data[k]['app_id']) {
+                                var mod = ''; //data[k]['app_module_name'];
+                                if (data[k]['app_module_name']) {
+                                    mod = data[k]['app_module_name'];
+                                    data[k]['app_module_name'] = '<a href="#catalog/modules/' + mod + '">' +
+                                        mod + '</a>';
+                                }
+                                data[k]['app_id'] = '<a href="#catalog/apps/' + mod + '/' + data[k]['app_id'] + '">' +
+                                    data[k]['app_id'] + '</a>';
+                            } else {
+                                if (data[k]['func_name']) {
+                                    data[k]['app_id'] = '(API):' + data[k]['func_name'];
+                                    if (data[k]['func_module_name']) {
+                                        mod = data[k]['func_module_name'];
+                                        data[k]['app_module_name'] = '<a href="#catalog/modules/' + mod + '">' +
+                                            mod + '</a>';
+                                    } else {
+                                        data[k]['app_module_name'] = 'Unknown'
+                                    }
+
+                                } else {
+                                    data[k]['app_id'] = 'Unknown'
+                                    data[k]['app_module_name'] = 'Unknown'
+                                }
+                            }
+                            client_groups = []
+                            for (var g = 0; g < awe_groups.length; g++) {
+                                if (awe_groups[g]['app_id'] == data[k]['app_id']) {
+                                    client_groups = awe_groups[g]['client_groups'];
+                                    data[k]['client_groups'] = client_groups.join();
+                                    break
+                                }
+                            }
+                        }
+                        self.adminQueuedRuns = data;
+                    });
+            },
+
+
+            getAdminCurrentRuns: function () {
+                var self = this;
+                
+                if (!self.isAdmin) {
+                    return Promise.try(function () {});
+                }
+                
+                var seconds = (new Date().getTime() / 1000) - 172800;
+
+                return self.catalog.get_exec_raw_stats({ begin: seconds })
+                    .then(function (data) {
+                        self.adminCurrentRuns = [];
+                        for (var k = 0; k < data.length; k++) {
+                            data[k]['creation_time'] = new Date(data[k]['creation_time'] * 1000).toLocaleString();
+                            data[k]['exec_start_time'] = new Date(data[k]['exec_start_time'] * 1000).toLocaleString();
+                            data[k]['current_time'] = new Date().getTime().toLocaleString();
+                            var rt = data[k]['current_time'] - data[k]['exec_start_time'];
+                            data[k]['user_id'] = '<a href="#people/' + data[k]['user_id'] + '">' + data[k]['user_id'] + '</a>'
+                            data[k]['running_time'] = '<!--' + rt + '-->' + self.getNiceDuration(rt);
+
+                            if (data[k]['is_error']) {
+                                data[k]['result'] = '<span class="label label-danger">Error</span>';
+                            } else {
+                                data[k]['result'] = '<span class="label label-success">Success</span>';
+                            }
+                            data[k]['result'] += '<span class="btn btn-default btn-xs"><i class="fa fa-file-text"></i></span>';
+
+                            if (data[k]['app_id']) {
+                                var mod = ''; //data[k]['app_module_name'];
+                                if (data[k]['app_module_name']) {
+                                    mod = data[k]['app_module_name'];
+                                    data[k]['app_module_name'] = '<a href="#catalog/modules/' + mod + '">' +
+                                        mod + '</a>';
+                                }
+                                data[k]['app_id'] = '<a href="#catalog/apps/' + mod + '/' + data[k]['app_id'] + '">' +
+                                    data[k]['app_id'] + '</a>';
+                            } else {
+                                if (data[k]['func_name']) {
+                                    data[k]['app_id'] = '(API):' + data[k]['func_name'];
+                                    if (data[k]['func_module_name']) {
+                                        mod = data[k]['func_module_name'];
+                                        data[k]['app_module_name'] = '<a href="#catalog/modules/' + mod + '">' +
+                                            mod + '</a>';
+                                    } else {
+                                        data[k]['app_module_name'] = 'Unknown'
+                                    }
+
+                                } else {
+                                    data[k]['app_id'] = 'Unknown'
+                                    data[k]['app_module_name'] = 'Unknown'
+                                }
+                            }
+
+                        }
+                        self.adminCurrentRuns = data;
+                    });
+            },
+
+
+            getAdminLatestRuns: function () {
+                var self = this;
+                
+                if (!self.isAdmin) {
+                    return Promise.try(function () {});
+                }
+                
                 var seconds = (new Date().getTime() / 1000) - 172800;
 
                 return self.catalog.get_exec_raw_stats({ begin: seconds })
@@ -501,7 +685,6 @@ define([
                         self.adminRecentRuns = data;
                     });
             },
-
 
 
             checkIsAdmin: function () {
